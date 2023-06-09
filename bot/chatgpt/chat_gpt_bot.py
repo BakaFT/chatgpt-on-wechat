@@ -169,23 +169,23 @@ class AzureChatGPTBot(ChatGPTBot):
         self.args["deployment_id"] = conf().get("azure_deployment_id")
 
     def create_img(self, query, retry_count=0, api_key=None):
-        api_version = "2022-08-03-preview"
-        url = "{}dalle/text-to-image?api-version={}".format(openai.api_base, api_version)
+        api_version = "2023-06-01-preview"
+        url = "{}openai/images/generations:submit?api-version={}".format(openai.api_base, api_version)
         api_key = api_key or openai.api_key
         headers = {"api-key": api_key, "Content-Type": "application/json"}
         try:
-            body = {"caption": query, "resolution": conf().get("image_create_size", "256x256")}
+            body = {"prompt":query,"n":1,"resolution":conf().get("image_create_size", "256x256")}
             submission = requests.post(url, headers=headers, json=body)
             operation_location = submission.headers["Operation-Location"]
-            retry_after = submission.headers["Retry-after"]
+            retry_after = '1'
             status = ""
             image_url = ""
-            while status != "Succeeded":
+            while status != "succeeded":
                 logger.info("waiting for image create..., " + status + ",retry after " + retry_after + " seconds")
                 time.sleep(int(retry_after))
                 response = requests.get(operation_location, headers=headers)
                 status = response.json()["status"]
-            image_url = response.json()["result"]["contentUrl"]
+            image_url = response.json()['result']['data'][0]['url']
             return True, image_url
         except Exception as e:
             logger.error("create image error: {}".format(e))
